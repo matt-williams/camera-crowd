@@ -27,8 +27,18 @@ while True:
         last_id = max(id, last_id)
 
     if data:
+        sys.stdout.write('data: ')
         sys.stdout.write(json.dumps(data))
         sys.stdout.write('\r\n\r\n')
         sys.stdout.flush()
+        timeout = 30
+
+    if timeout == 0:
+        sys.stdout.write(':\r\n\r\n')
+        sys.stdout.flush()
+        timeout = 30
+
+    timeout -= 1
+
     time.sleep(1)
 
