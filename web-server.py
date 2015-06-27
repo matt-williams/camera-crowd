@@ -1,8 +1,12 @@
-from flask import Flask, Response
+from flask import Flask, Response, request
 import requests
 import database as db
 import json
 import time
+import uuid
+import os
+import base64
+from datetime import datetime
 
 app = Flask(__name__)
 
@@ -54,6 +58,29 @@ def events():
         conn.close()
 
     return Response(gen(), mimetype="text/event-stream")
+
+img_location = "/home/htv/public_html/img"
+img_url_base = "https://tastycake.net/~htv/img/"
+
+@app.route("/add", methods=['POST'])
+def add():
+    created_at = datetime.now()
+    try:
+        u = str(uuid.uuid4())
+        f = open(os.path.join(img_location, u + ".jpg"), 'w')
+        f.write(base64.decodestring(request.data))
+        f.close()
+        url = img_url_base + u + ".jpg"
+        conn = db.connect()
+        cur = conn.cursor() 
+        cur.execute('INSERT INTO photos(url, created) VALUES (?, ?);',
+                    (url, created_at.isoformat()))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print e
+        raise
+    return "", 200
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10080, threaded=True, debug=False)

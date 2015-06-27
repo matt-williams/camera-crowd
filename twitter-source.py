@@ -35,7 +35,7 @@ def extract_media_url(data):
                     print data['created_at'], ent['media_url']
                     created_at = parse_date(data['created_at'])
                     url = ent['media_url']
-                    conn = db.init_db()
+                    conn = db.connect()
                     cur = conn.cursor() 
                     cur.execute('SELECT * from photos WHERE url=?;', (url,))
                     if cur.fetchone() is None:
