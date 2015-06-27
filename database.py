@@ -10,7 +10,7 @@ def init_db():
     conn = sqlite3.connect('example.db')
     return conn
 
-def create_schema(conn):
+def create_schema():
     conn = init_db()
     cur = conn.cursor();
     cur.execute('CREATE TABLE photos (id INTEGER PRIMARY KEY, url TEXT NOT NULL, json TEXT, created TEXT NOT NULL);')
@@ -21,4 +21,4 @@ if __name__ == '__main__':
     args = docopt(__doc__)
 
     if args['create-schema']:
-        create_schema(conn)
+        create_schema()
