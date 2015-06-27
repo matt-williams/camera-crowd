@@ -5,18 +5,7 @@ import numpy as np
 import cv2
 import json
 
-def init_db():
-    conn = sqlite3.connect('example.db')
-    return conn
-
-def create_schema(conn):
-    cur = conn.cursor();
-    cur.execute('CREATE TABLE photos (id INTEGER PRIMARY KEY, url TEXT NOT NULL, json TEXT NOT NULL);');
-
-#conn = init_db()
-#create_schema(conn)
-#conn.close()
-#exit(1)
+import database as db
 
 def get_id_url(conn, last_id):
     cur = conn.cursor()
@@ -68,7 +57,7 @@ def compute_homography(kp1, desc1, kp2, desc2):
         return h
     return None
 
-conn = init_db()
+conn = db.init_db()
 detector, matcher = init_opencv()
 base_img = imgread("base.jpg", 1)
 base_kp, base_desc = detector.detectAndCompute(base_img, None)

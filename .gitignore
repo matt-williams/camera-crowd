@@ -56,4 +56,8 @@ docs/_build/
 # PyBuilder
 target/
 
+# Panorama-processing Blender file (downloaded if absent)
 environment.zip
+
+# Database
+example.db
