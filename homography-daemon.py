@@ -59,7 +59,7 @@ def compute_homography(kp1, desc1, kp2, desc2):
 
 conn = db.init_db()
 detector, matcher = init_opencv()
-base_img = imread("base.jpg", 1)
+base_img = cv2.imread("base.jpg", 1)
 base_kp, base_desc = detector.detectAndCompute(base_img, None)
 id = 0
 while True:
