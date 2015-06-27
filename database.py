@@ -13,7 +13,7 @@ def init_db():
 def create_schema(conn):
     conn = init_db()
     cur = conn.cursor();
-    cur.execute('CREATE TABLE photos (id INTEGER PRIMARY KEY, url TEXT NOT NULL, json TEXT NOT NULL, created TEXT NOT NULL);')
+    cur.execute('CREATE TABLE photos (id INTEGER PRIMARY KEY, url TEXT NOT NULL, json TEXT, created TEXT NOT NULL);')
     cur.execute('CREATE INDEX photo_url_index ON photos(url);')
     conn.close()
 
