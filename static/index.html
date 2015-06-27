@@ -21,9 +21,10 @@
 
   controls = new THREE.PointerLockControls(camera);
   controls.enabled = true;
+  controls.getObject().position.y = 0;
   scene.add(controls.getObject());
 
-  var geometry = new THREE.BoxGeometry(100, 100, 100);
+  var geometry = new THREE.BoxGeometry(1, 1, 1);
 
   textureCube = THREE.ImageUtils.loadTextureCube([
     'img/pos-x.png',
@@ -63,6 +64,32 @@
     render();
     requestAnimationFrame(animate);
   }
+
+  var textureLoader = new THREE.TextureLoader();
+
+  var source = new EventSource("/events");
+  source.onmessage = function(event) {
+    var messages = JSON.parse(event.data);
+    console.log("Got messages", messages);
+    for (var ii = 0; ii < messages.length; ii++) {
+      var message = messages[ii];
+
+      textureLoader.load("/photos/" + message.id, function(texture) {
+        texture.minFilter = THREE.LinearFilter;
+        var geometry = new THREE.PlaneBufferGeometry(0.25, 0.25);
+        geometry.uvsNeedUpdate = true;
+        var material = new THREE.MeshBasicMaterial({map: texture, side: THREE.DoubleSide});
+        var plane = new THREE.Mesh(geometry, material);
+        plane.position.x = message.json[0][0];
+        plane.position.y = message.json[1][0];
+        plane.position.z = message.json[2][0];
+        scene.add(plane);
+      });
+    }
+  };
+  //window.setInterval(function() {
+  //  source.onmessage({data: JSON.stringify({url: "img/pos-x.png", json: [[Math.random() * 2 - 1], [Math.random() * 2 - 1], [-Math.random() - 2]]})});
+  //}, 1000);
 
   animate();
 </script>

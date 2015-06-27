@@ -6,12 +6,12 @@ Usage: database.py create-schema
 import sqlite3
 from docopt import docopt
 
-def init_db():
+def connect():
     conn = sqlite3.connect('example.db')
     return conn
 
 def create_schema():
-    conn = init_db()
+    conn = connect()
     cur = conn.cursor();
     cur.execute('CREATE TABLE photos (id INTEGER PRIMARY KEY, url TEXT NOT NULL, json TEXT, created TEXT NOT NULL);')
     cur.execute('CREATE INDEX photo_url_index ON photos(url);')
