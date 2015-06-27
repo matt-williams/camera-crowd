@@ -9,7 +9,7 @@
 </head>
 <body>
 <script src="js/three.min.js"></script>
-<script src="js/TrackballControls.js"></script>
+<script src="js/PointerLockControls.js"></script>
 <script>
   var scene = new THREE.Scene();
   var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -19,15 +19,19 @@
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(renderer.domElement);
 
-  var geometry = new THREE.BoxGeometry(1, 1, 1);
+  controls = new THREE.PointerLockControls(camera);
+  controls.enabled = true;
+  scene.add(controls.getObject());
+
+  var geometry = new THREE.BoxGeometry(100, 100, 100);
 
   textureCube = THREE.ImageUtils.loadTextureCube([
-    'img/neg-x.png',
     'img/pos-x.png',
-    'img/neg-y.png',
+    'img/neg-x.png',
     'img/pos-y.png',
-    'img/neg-z.png',
-    'img/pos-z.png'
+    'img/neg-y.png',
+    'img/pos-z.png',
+    'img/neg-z.png'
   ]);
   textureCube.format = THREE.RGBFormat;
 
@@ -46,16 +50,21 @@
   scene.add(cube);
 
   function render() {
-    requestAnimationFrame(render);
     renderer.render(scene, camera);
-    camera.rotation.y -= 0.01;
   }
   window.addEventListener('resize', function() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+    render();
   }, false);
-  render();
+
+  function animate() {
+    render();
+    requestAnimationFrame(animate);
+  }
+
+  animate();
 </script>
 </body>
 </html>
