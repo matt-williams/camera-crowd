@@ -12,6 +12,7 @@ import os
 import json
 import datetime
 import subprocess
+import traceback
 
 from docopt import docopt
 
@@ -44,10 +45,10 @@ def extract_media_url(data):
                     conn.commit()
                     conn.close()
 
-            except Exception as e:
-                print e
+            except Exception:
+                print traceback.format_exc()
     except Exception:
-        pass
+        print traceback.format_exc()
 
 class StdOutListener(StreamListener):
 
