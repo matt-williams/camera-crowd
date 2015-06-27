@@ -39,7 +39,7 @@ def extract_media_url(data):
                     cur = conn.cursor() 
                     cur.execute('SELECT * from photos WHERE url=?;', (url,))
                     if cur.fetchone() is None:
-                        cur.execute('INSERT INTO photos(url, created) VALUES (?, ?, ?);',
+                        cur.execute('INSERT INTO photos(url, created) VALUES (?, ?);',
                                     (url, created_at.isoformat()))
                     conn.commit()
                     conn.close()
