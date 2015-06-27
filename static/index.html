@@ -10,6 +10,9 @@
 <body>
 <script src="js/three.min.js"></script>
 <script src="js/PointerLockControls.js"></script>
+<script src="js/StereoEffect.js"></script>
+<script src="js/DeviceOrientationControls.js"></script>
+<script src="js/OrbitControls.js"></script>
 <script>
   var scene = new THREE.Scene();
   var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -19,12 +22,41 @@
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(renderer.domElement);
 
-  controls = new THREE.PointerLockControls(camera);
-  controls.enabled = true;
-  controls.getObject().position.y = 0;
-  scene.add(controls.getObject());
+  ptr_controls = new THREE.PointerLockControls(camera);
+  ptr_controls.enabled = true;
+  ptr_controls.getObject().position.y = 0;
+  scene.add(ptr_controls.getObject());
 
-  var geometry = new THREE.BoxGeometry(1, 1, 1);
+  var effect = renderer;
+  var dev_controls = null;
+
+  function fullscreen() {
+    var container = document.body;
+    if (container.requestFullscreen) {
+      container.requestFullscreen();
+    } else if (container.msRequestFullscreen) {
+      container.msRequestFullscreen();
+    } else if (container.mozRequestFullScreen) {
+      container.mozRequestFullScreen();
+    } else if (container.webkitRequestFullscreen) {
+      container.webkitRequestFullscreen();
+    }
+  }
+
+  function setOrientationControls(e) {
+    if (!e.alpha) return;
+    effect = new THREE.StereoEffect(renderer);
+    effect.setSize(window.innerWidth, window.innerHeight);
+    dev_controls = new THREE.DeviceOrientationControls(camera, true);
+    dev_controls.connect();
+    dev_controls.update();
+    renderer.domElement.addEventListener('click', fullscreen, false);
+    window.removeEventListener('deviceorientation', setOrientationControls, true);
+  }
+  window.addEventListener('deviceorientation', setOrientationControls, true);
+
+
+  var geometry = new THREE.BoxGeometry(100, 100, 100);
 
   textureCube = THREE.ImageUtils.loadTextureCube([
     'img/pos-x.jpg',
@@ -51,12 +83,13 @@
   scene.add(cube);
 
   function render() {
-    renderer.render(scene, camera);
+    if (dev_controls) dev_controls.update()
+    effect.render(scene, camera);
   }
   window.addEventListener('resize', function() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    effect.setSize(window.innerWidth, window.innerHeight);
     render();
   }, false);
 
