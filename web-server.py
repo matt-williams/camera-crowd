@@ -15,7 +15,7 @@ def photos(id):
     conn.close()
     if row:
         url = row[0]
-        print "Proxying request for image %d to %s " % (id, url)
+        print "Proxying request for image %s to %s " % (id, url)
         rsp = requests.get(url, stream=True)
         headers = dict(rsp.headers)
         if rsp.status_code == 200:
