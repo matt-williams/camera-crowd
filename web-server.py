@@ -44,9 +44,9 @@ def events():
                     last_id = max(id, last_id)
 
                 if data:
-                    event = "data: %s\n\n" % (json.dumps(data),)
+                    event = json.dumps(data)
                     print "Sending event %s" % (event,)
-                    yield event
+                    yield "data: %s\n\n" % (event,)
                 time.sleep(1)
 
         except GeneratorExit:
@@ -56,4 +56,4 @@ def events():
     return Response(gen(), mimetype="text/event-stream")
 
 if __name__ == "__main__":
-    app.run(port=10080, threaded=True, debug=True)
+    app.run(host="0.0.0.0", port=10080, threaded=True, debug=True)
