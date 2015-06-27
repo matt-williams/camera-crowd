@@ -69,6 +69,6 @@ while True:
     
     kp, desc = detector.detectAndCompute(img, None)
     h = compute_homography(base_kp, base_desc, kp, desc)
-    if h != None:
+    if h:
         print "Got homography: %s" % (json.dumps(h.tolist()),)
         set_json(conn, id, json.dumps(h.tolist()))
