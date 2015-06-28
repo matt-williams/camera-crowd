@@ -54,7 +54,7 @@ class StdOutListener(StreamListener):
 
     def on_data(self, data):
         #print data
-        extract_media_url(data)
+        extract_media_url(json.loads(data))
         return True
 
     def on_error(self, status):
