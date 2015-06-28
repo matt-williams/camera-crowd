@@ -13,11 +13,13 @@ import json
 import datetime
 import subprocess
 import traceback
+import logging
 
 from docopt import docopt
 
 import database as db
 
+logger = logging.getLogger(__name__)
 
 def parse_date(date):
     # python2.6 is too dumb to parse twitter's idiotic date format
@@ -30,25 +32,33 @@ def extract_media_url(data):
         if 'retweeted_status' in data:
             if data['retweeted_status']['created_at'] != data['created_at']:
                 original = False
-        for ent in data['entities']['media']:
-            try:
-                if original:
-                    print data['created_at'], ent['media_url']
-                    created_at = parse_date(data['created_at'])
-                    url = ent['media_url']
-                    conn = db.connect()
-                    cur = conn.cursor() 
-                    cur.execute('SELECT * from photos WHERE url=?;', (url,))
-                    if cur.fetchone() is None:
-                        cur.execute('INSERT INTO photos(url, created) VALUES (?, ?);',
-                                    (url, created_at.isoformat()))
-                    conn.commit()
-                    conn.close()
+        ents = data.get('entities', {}).get('media', [])
+        if ents:
+            for ent in ents:
+                try:
+                    if original:
+                        created_at = parse_date(data['created_at'])
+                        url = ent['media_url']
+                        conn = db.connect()
+                        cur = conn.cursor() 
+                        cur.execute('SELECT * from photos WHERE url=?;', (url,))
+                        if cur.fetchone() is None:
+                            cur.execute('INSERT INTO photos(url, created) VALUES (?, ?);',
+                                        (url, created_at.isoformat()))
+                            logger.info("Added tweet: %s", url)
+                        else:
+                            logger.info("Not adding: tweet is already there")
+                        conn.commit()
+                        conn.close()
+                    else:
+                        logger.info("Not adding: tweet is not original")
+                except Exception:
+                    logger.exception("Unexpected exception")
+        else:
+            logger.info("Not adding: tweet has no media")
 
-            except Exception:
-                print traceback.format_exc()
     except Exception:
-        print traceback.format_exc()
+        logger.exception("Unexpected exception")
 
 class StdOutListener(StreamListener):
 
@@ -61,14 +71,18 @@ class StdOutListener(StreamListener):
         print status
 
 if __name__ == '__main__':
+    FORMAT = '%(asctime)-15s %(message)s'
+    logging.basicConfig(format=FORMAT, level=logging.INFO)
     args = docopt(__doc__)
     keys = json.loads(open(os.path.join(os.environ['HOME'], '.twitter-keys')).read())
     l = StdOutListener()
     auth = OAuthHandler(keys['consumer_key'], keys['consumer_secret'])
     auth.set_access_token(keys['access_token'], keys['access_token_secret'])
     api = API(auth)
+    logger.info("Connected to twitter.  Scanning recent tweets.")
     for status in api.search(args['<search-term>']):
         extract_media_url(status._json)
+    logger.info("Waiting for new tweets.")
     stream = Stream(auth, l)
     stream.filter(track=[args['<search-term>']])
 
