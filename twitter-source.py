@@ -12,6 +12,7 @@ import os
 import json
 import datetime
 import subprocess
+import traceback
 
 from docopt import docopt
 
@@ -35,7 +36,7 @@ def extract_media_url(data):
                     print data['created_at'], ent['media_url']
                     created_at = parse_date(data['created_at'])
                     url = ent['media_url']
-                    conn = db.init_db()
+                    conn = db.connect()
                     cur = conn.cursor() 
                     cur.execute('SELECT * from photos WHERE url=?;', (url,))
                     if cur.fetchone() is None:
@@ -44,16 +45,16 @@ def extract_media_url(data):
                     conn.commit()
                     conn.close()
 
-            except Exception as e:
-                print e
+            except Exception:
+                print traceback.format_exc()
     except Exception:
-        pass
+        print traceback.format_exc()
 
 class StdOutListener(StreamListener):
 
     def on_data(self, data):
         #print data
-        extract_media_url(data)
+        extract_media_url(json.loads(data))
         return True
 
     def on_error(self, status):
