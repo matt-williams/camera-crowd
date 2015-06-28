@@ -34,25 +34,26 @@ def extract_media_url(data):
                 original = False
         ents = data.get('entities', {}).get('media', [])
         if ents:
-            try:
-                if original:
-                    created_at = parse_date(data['created_at'])
-                    url = ent['media_url']
-                    conn = db.connect()
-                    cur = conn.cursor() 
-                    cur.execute('SELECT * from photos WHERE url=?;', (url,))
-                    if cur.fetchone() is None:
-                        cur.execute('INSERT INTO photos(url, created) VALUES (?, ?);',
-                                    (url, created_at.isoformat()))
-                        logger.info("Added tweet: %s", url)
+            for ent in ents:
+                try:
+                    if original:
+                        created_at = parse_date(data['created_at'])
+                        url = ent['media_url']
+                        conn = db.connect()
+                        cur = conn.cursor() 
+                        cur.execute('SELECT * from photos WHERE url=?;', (url,))
+                        if cur.fetchone() is None:
+                            cur.execute('INSERT INTO photos(url, created) VALUES (?, ?);',
+                                        (url, created_at.isoformat()))
+                            logger.info("Added tweet: %s", url)
+                        else:
+                            logger.info("Not adding: tweet is already there")
+                        conn.commit()
+                        conn.close()
                     else:
-                        logger.info("Not adding: tweet is already there")
-                    conn.commit()
-                    conn.close()
-                else:
-                    logger.info("Not adding: tweet is not original")
-            except Exception:
-                logger.exception("Unexpected exception")
+                        logger.info("Not adding: tweet is not original")
+                except Exception:
+                    logger.exception("Unexpected exception")
         else:
             logger.info("Not adding: tweet has no media")
 
