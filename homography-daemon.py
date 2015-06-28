@@ -99,53 +99,68 @@ def compute_homography(kp1, desc1, kp2, desc2):
     p1, p2, kp_pairs = filter_matches(kp1, kp2, raw_matches)
     if len(p1) >= 4:
         h, status = cv2.findHomography(p1, p2, cv2.RANSAC, 5.0)
-        return h
-    return None
+        return len(p1), h
+    return 0, None
 
-def get_json_data(base_img, base_kp, base_desc, img2):
+def get_json_data(bases, img2):
     kp2, desc2 = detector.detectAndCompute(img2, None)
 
-    height1, width1, channels = base_img.shape
-    height2, width2, channels = img2.shape
-    h = compute_homography(kp2, desc2, base_kp, base_desc)
-    
+    res = []
+    for base in bases:
+        n, h = compute_homography(kp2, desc2, base['kp'], base['desc'])
+        res.append((n, h, base))
+    res.sort(key = lambda e: e[0], reverse = True)
+    best = res[0]
+    h = best[1]
+    base = best[2]
+
     data = None
     if not h is None:
+        height1, width1, channels = base['img'].shape
+        height2, width2, channels = img2.shape
+    
         if construct_perspective:
             matrix = modelview(width1, height1, width2, height2, math.radians(90), math.radians(90), h)
             #modelview(width1, height1, width2, height2, math.radians(45), math.radians(45), h)
             #modelview(width1, height1, width2, height2, math.radians(53), math.radians(40), h)
         
             # Rotate because we're comparing against the neg-x face, but our matrices are against the neg-z
-            rotation = np.float32([[0, 0, -1, 0], [0, 1, 0, 0], [1, 0, 0, 0], [0, 0, 0, 1]])
+            rotation = np.float32(base.rot)
             matrix = rotation.dot(matrix);
             data = [item for sublist in matrix.tolist() for item in sublist]
         else:
             quad_2d = np.float32([[0, 0], [width1, 0], [0, height1], [width1, height1]])
             quad_2d = cv2.perspectiveTransform(quad_2d.reshape(1, -1, 2), h).reshape(-1, 2)
-            data = [[2*v[0]/width1-1, 1-2*v[1]/height1] for v in quad_2d.tolist()]
+            data = {'verts': [[2*v[0]/width1-1, 1-2*v[1]/height1] for v in quad_2d.tolist()],
+                    'rotation': [item for sublist in base['rot'] for item in sublist]}
     return data
 
 conn = db.connect()
 detector, matcher = init_opencv()
 
+bases = [{'file': "static/img/pos-x.jpg",
+          'rot': [[0, 0, 1, 0], [0, 1, 0, 0], [-1, 0, 0, 0], [0, 0, 0, 1]]},
+         {'file': "static/img/neg-x.jpg",
+          'rot': [[0, 0, -1, 0], [0, 1, 0, 0], [1, 0, 0, 0], [0, 0, 0, 1]]},
+         {'file': "static/img/pos-z.jpg",
+          'rot': [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]},
+         {'file': "static/img/neg-z.jpg",
+          'rot': [[-1, 0, 0, 0], [0, 1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]]}]
+for base in bases:
+    base['img'] = cv2.imread(base['file'])
+    base['kp'], base['desc'] = detector.detectAndCompute(base['img'], None)
+
 if __name__ == '__main__':
     # TODO use docopt
 
     if len(sys.argv) >= 2 and sys.argv[1] == "offline":
-        base_img = cv2.imread("neg-x.jpg", 1)
-        base_kp, base_desc = detector.detectAndCompute(base_img, None)
-        
         for file in ["photos/1", "neg-x.jpg", "neg-x-scaled.jpg", "neg-x-cropped.jpg", "neg-x-rotated.jpg", "neg-x-perspective.jpg"]:
             img2 = cv2.imread(file)
-            data = get_json_data(base_img, base_kp, base_desc, img2)
+            data = get_json_data(bases, img2)
             print '{url: "../%s", id: 1, json:' % (file,)
             print json.dumps(data)
             print '},'
     else:
-        base_img = cv2.imread("base.jpg", 1)
-        base_kp, base_desc = detector.detectAndCompute(base_img, None)
-        
         id = 0
         while True:
             id, url = get_id_url(conn, id)
@@ -153,7 +168,7 @@ if __name__ == '__main__':
             try:
                 img = load_img(url)
                 
-                data = get_json_data(base_img, base_kp, base_desc, img)
+                data = get_json_data(bases, img)
                 if data:
                     print "Got data: %s" % (json.dumps(data),)
                     set_json(conn, id, json.dumps(data))
