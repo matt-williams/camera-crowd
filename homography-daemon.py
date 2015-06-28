@@ -31,11 +31,7 @@ def modelview(width1, height1, width2, height2, fov_x, fov_y, H):
     cameraPosition[0,0] = -cameraPosition[0,0]
     #cameraPosition[1,0] = -cameraPosition[1,0]
     cameraPosition = cameraPosition.T * rotM
-    #print rotM
-    #print cameraPosition
     modelview = combine_rotation_translation(rotM.T, cameraPosition)
-    print modelview
-    print json.dumps([item for sublist in modelview.tolist() for item in sublist])
     return modelview
 
 def combine_rotation_translation(rotation, translation):
@@ -44,22 +40,6 @@ def combine_rotation_translation(rotation, translation):
     matrix[0:3, 3] = translation.reshape(1, -1, 3)
     matrix[3, 3] = 1
     return matrix
-
-#rotation = np.zeros((3, 3))
-#rotation[0, 0] = 1
-#rotation[0, 1] = 2
-#rotation[0, 2] = 3
-#rotation[1, 0] = 4
-#rotation[1, 1] = 5
-#rotation[1, 2] = 6
-#rotation[2, 0] = 7
-#rotation[2, 1] = 8
-#rotation[2, 2] = 9
-#translation = np.zeros((3, 1))
-#translation[0] = 10
-#translation[1] = 11
-#translation[2] = 12
-#combine_rotation_translation(rotation, translation)
 
 def matrix_to_opengl(matrix):
     conversion = np.zeros((4, 4))
@@ -126,24 +106,32 @@ conn = db.connect()
 detector, matcher = init_opencv()
 
 
-img1 = cv2.imread("static/img/neg-x.jpg", 1)
+img1 = cv2.imread("neg-x.jpg", 1)
 kp1, desc1 = detector.detectAndCompute(img1, None)
 
-img2 = cv2.imread("photos/1", 1)
-img2 = cv2.imread("neg-x-scaled.jpg", 1)
-img2 = cv2.imread("neg-x-cropped.jpg", 1)
-img2 = cv2.imread("neg-x-rotated.jpg", 1)
-img2 = cv2.imread("neg-x-perspective.jpg", 1)
-#img2 = img1
-kp2, desc2 = detector.detectAndCompute(img2, None)
+for file in ["photos/1", "neg-x.jpg", "neg-x-scaled.jpg", "neg-x-cropped.jpg", "neg-x-rotated.jpg", "neg-x-perspective.jpg"]:
+    
+    img2 = cv2.imread(file, 1)
+    kp2, desc2 = detector.detectAndCompute(img2, None)
+    
+    h = compute_homography(kp2, desc2, kp1, desc1)
+    height1, width1, channels = img1.shape
+    height2, width2, channels = img2.shape
+    matrix = modelview(width1, height1, width2, height2, math.radians(90), math.radians(90), h)
+    #modelview(width1, height1, width2, height2, math.radians(45), math.radians(45), h)
+    #modelview(width1, height1, width2, height2, math.radians(53), math.radians(40), h)
 
-h = compute_homography(kp2, desc2, kp1, desc1)
-#h = compute_homography(kp1, desc1, kp2, desc2)
-height1, width1, channels = img1.shape
-height2, width2, channels = img2.shape
-modelview(width1, height1, width2, height2, math.radians(90), math.radians(90), h)
-#modelview(width1, height1, width2, height2, math.radians(45), math.radians(45), h)
-#modelview(width1, height1, width2, height2, math.radians(53), math.radians(40), h)
+    # Rotate because we're comparing against the neg-x face, but our matrices are against the neg-z
+    rotation = np.float32([[0, 0, -1, 0], [0, 1, 0, 0], [1, 0, 0, 0], [0, 0, 0, 1]])
+    matrix = rotation.dot(matrix);
+    #tmp = matrix[0, 3]
+    #matrix[0, 3] = -matrix[2, 3]
+    #matrix[2, 3] = tmp
+
+    #print matrix
+    print '{url: "../%s", id: 1, json:' % (file,)
+    print json.dumps([item for sublist in matrix.tolist() for item in sublist])
+    print '},'
 
 
 
