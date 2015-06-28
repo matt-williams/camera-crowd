@@ -117,8 +117,19 @@
               planeHolder.matrix.set.apply(planeHolder.matrix, message.json);
               scene.add(planeHolder);
           } else {
-              planeHolder.matrixAutoUpdate = false;
-              planeHolder.matrix.set.apply(planeHolder.matrix, message.json.rotation);
+              if (message.json.rotation[0] > 0) {
+                planeHolder.position.z = 1;
+                planeHolder.rotation.y = Math.PI / 2;
+              } else if (message.json.rotation[0] < 0) {
+                planeHolder.position.z = -1;
+                planeHolder.rotation.y = -Math.PI / 2;
+              } else if (message.json.rotation[8] > 0) {
+                planeHolder.position.x = 1;
+                planeHolder.rotation.y = 0;
+              } else if (message.json.rotation[8] < 0) {
+                planeHolder.position.x = -1;
+                planeHolder.rotation.y = Math.PI;
+              }
               scene.add(planeHolder);
           }
 
@@ -127,17 +138,21 @@
             if (constructPerspective) {
                 var geometry = new THREE.PlaneBufferGeometry(2, 2 * texture.image.height / texture.image.width);
             } else {
-                var geometry = new THREE.PlaneGeometry(2, 2 * texture.image.height / texture.image.width);
+                var geometry = new THREE.PlaneGeometry(1, 1 * texture.image.height / texture.image.width);
                 console.log(geometry.vertices);
-                for (var ii = 0; ii < 4; ii++) {
-                  geometry.vertices[ii].x = message.json.verts[ii][0];
-                  geometry.vertices[ii].y = message.json.verts[ii][1];
-                  geometry.vertices[ii].z = -1;
-                }
-                geometry.verticesNeedUpdate = true;
+                //for (var ii = 0; ii < 4; ii++) {
+                ////  geometry.vertices[ii].x = message.json.verts[0][0] + (ii % 2);
+                ////  geometry.vertices[ii].y = message.json.verts[0][1] + (ii / 2 > 0) ? 1 : 0;
+                //  geometry.vertices[ii].x = message.json.verts[ii][0];
+                //  geometry.vertices[ii].y = message.json.verts[ii][1];
+                //}
+                //geometry.verticesNeedUpdate = true;
             }
             var material = new THREE.MeshBasicMaterial({map: texture, side: THREE.DoubleSide, transparent: true});
             var plane = new THREE.Mesh(geometry, material);
+            if (!constructPerspective) {
+              plane.rotation.y = -Math.PI / 2;
+            }
             planeHolder.add(plane);
   
             // Animate
