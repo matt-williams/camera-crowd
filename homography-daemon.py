@@ -9,6 +9,8 @@ import sys
 
 import database as db
 
+construct_perspective = False
+
 def intrinsic(width, height, fov_x, fov_y):
     K = np.zeros((3, 3))
     K[0, 0] = width / (2 * math.tan(fov_x / 2))
@@ -100,24 +102,16 @@ def compute_homography(kp1, desc1, kp2, desc2):
         return h
     return None
 
-conn = db.connect()
-detector, matcher = init_opencv()
+def get_json_data(base_img, base_kp, base_desc, img2):
+    kp2, desc2 = detector.detectAndCompute(img2, None)
 
-if __name__ == '__main__':
-    # TODO use docopt
-
-    if len(sys.argv) >= 2 and sys.argv[1] == "offline":
-        img1 = cv2.imread("neg-x.jpg", 1)
-        kp1, desc1 = detector.detectAndCompute(img1, None)
-        
-        for file in ["photos/1", "neg-x.jpg", "neg-x-scaled.jpg", "neg-x-cropped.jpg", "neg-x-rotated.jpg", "neg-x-perspective.jpg"]:
-            
-            img2 = cv2.imread(file, 1)
-            kp2, desc2 = detector.detectAndCompute(img2, None)
-            
-            h = compute_homography(kp2, desc2, kp1, desc1)
-            height1, width1, channels = img1.shape
-            height2, width2, channels = img2.shape
+    height1, width1, channels = base_img.shape
+    height2, width2, channels = img2.shape
+    h = compute_homography(kp2, desc2, base_kp, base_desc)
+    
+    data = None
+    if not h is None:
+        if construct_perspective:
             matrix = modelview(width1, height1, width2, height2, math.radians(90), math.radians(90), h)
             #modelview(width1, height1, width2, height2, math.radians(45), math.radians(45), h)
             #modelview(width1, height1, width2, height2, math.radians(53), math.radians(40), h)
@@ -125,9 +119,28 @@ if __name__ == '__main__':
             # Rotate because we're comparing against the neg-x face, but our matrices are against the neg-z
             rotation = np.float32([[0, 0, -1, 0], [0, 1, 0, 0], [1, 0, 0, 0], [0, 0, 0, 1]])
             matrix = rotation.dot(matrix);
+            data = [item for sublist in matrix.tolist() for item in sublist]
+        else:
+            quad_2d = np.float32([[0, 0], [width1, 0], [0, height1], [width1, height1]])
+            quad_2d = cv2.perspectiveTransform(quad_2d.reshape(1, -1, 2), h).reshape(-1, 2)
+            data = [[2*v[0]/width1-1, 1-2*v[1]/height1] for v in quad_2d.tolist()]
+    return data
+
+conn = db.connect()
+detector, matcher = init_opencv()
+
+if __name__ == '__main__':
+    # TODO use docopt
+
+    if len(sys.argv) >= 2 and sys.argv[1] == "offline":
+        base_img = cv2.imread("neg-x.jpg", 1)
+        base_kp, base_desc = detector.detectAndCompute(base_img, None)
         
+        for file in ["photos/1", "neg-x.jpg", "neg-x-scaled.jpg", "neg-x-cropped.jpg", "neg-x-rotated.jpg", "neg-x-perspective.jpg"]:
+            img2 = cv2.imread(file)
+            data = get_json_data(base_img, base_kp, base_desc, img2)
             print '{url: "../%s", id: 1, json:' % (file,)
-            print json.dumps([item for sublist in matrix.tolist() for item in sublist])
+            print json.dumps(data)
             print '},'
     else:
         base_img = cv2.imread("base.jpg", 1)
@@ -140,10 +153,9 @@ if __name__ == '__main__':
             try:
                 img = load_img(url)
                 
-                kp, desc = detector.detectAndCompute(img, None)
-                h = compute_homography(base_kp, base_desc, kp, desc)
-                if h:
-                    print "Got homography: %s" % (json.dumps(h.tolist()),)
-                    set_json(conn, id, json.dumps(h.tolist()))
+                data = get_json_data(base_img, base_kp, base_desc, img)
+                if data:
+                    print "Got data: %s" % (json.dumps(data),)
+                    set_json(conn, id, json.dumps(data))
             except:
                 print "Caught exception - skipping"
