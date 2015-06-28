@@ -102,8 +102,7 @@
 
   var textureLoader = new THREE.TextureLoader();
 
-  //var source = new EventSource("/events");
-  var source = {};
+  var source = new EventSource("/events");
   source.onmessage = function(event) {
     var messages = JSON.parse(event.data);
     console.log("Got messages", messages);
@@ -143,9 +142,10 @@
       })(messages[ii], (ii + Math.random()) * 3000);
     }
   };
-  window.setTimeout(function() {
-    source.onmessage({data: JSON.stringify(
-      [
+  source.onerror = function() {
+    window.setTimeout(function() {
+      source.onmessage({data: JSON.stringify(
+        [
 {url: "../photos/1", id: 1, json:
 [-0.23895488067872647, -0.2863602375054499, -0.9278460968154352, 2.1417553378329033, -0.08980157888735206, 0.9579491276735953, -0.27252365992466865, 1.848506162718504, 0.9668692990415789, 0.018201185819063923, -0.2546222209580806, 1.3987007689509268, 0.0, 0.0, 0.0, 1.0]
 },
@@ -164,8 +164,9 @@
 {url: "../neg-x-perspective.jpg", id: 1, json:
 [0.4179410429728873, 0.09729066719680876, -0.9032495838222871, 1.0890369558420177, -0.05921138663223234, 0.99505223763286, 0.07978130153692997, -0.29758872615313625, 0.906542495579674, 0.02013877995902545, 0.42163388531988094, 0.5156323336942625, 0.0, 0.0, 0.0, 1.0]
 },
-      ])});
-  }, 1000);
+        ])});
+    }, 1000);
+  };
 
   animate();
 </script>
