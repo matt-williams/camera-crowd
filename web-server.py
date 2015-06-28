@@ -40,7 +40,7 @@ def events():
                     if row is None:
                         break
                     id, url, created, json_text = row
-                    data.append({'id':id, 'url':url, 'created':created, 'json':json.loads(json_text)})
+                    data.append({'id':id, 'url':"/photos/" + id, 'created':created, 'json':json.loads(json_text)})
                     last_id = max(id, last_id)
 
                 if data:

@@ -2,10 +2,72 @@ import sqlite3
 import time
 import requests
 import numpy as np
+import math
 import cv2
 import json
 
 import database as db
+
+def intrinsic(width, height, fov_x, fov_y):
+    K = np.zeros((3, 3))
+    K[0, 0] = width / (2 * math.tan(fov_x / 2))
+    K[1, 1] = height / (2 * math.tan(fov_y / 2))
+    K[0, 2] = width / 2
+    K[1, 2] = height / 2
+    K[2, 2] = 1
+    return K
+
+def modelview(width1, height1, width2, height2, fov_x, fov_y, H):
+    quad_3d = np.float32([[-math.tan(fov_x / 2), -math.tan(fov_y / 2), 0],
+                          [ math.tan(fov_x / 2), -math.tan(fov_y / 2), 0],
+                          [ math.tan(fov_x / 2),  math.tan(fov_y / 2), 0],
+                          [-math.tan(fov_x / 2),  math.tan(fov_y / 2), 0]])
+    quad_2d = np.float32([[0, 0], [width2, 0], [width2, height2], [0, height2]])
+    quad_2d = cv2.perspectiveTransform(quad_2d.reshape(1, -1, 2), H).reshape(-1, 2)
+    K = intrinsic(width1, height1, fov_x, fov_y)
+    res, rvec, tvec = cv2.solvePnP(quad_3d, quad_2d, K, None)
+    rotM = cv2.Rodrigues(rvec)[0]
+    cameraPosition = -np.matrix(rotM).T * np.matrix(tvec)
+    cameraPosition[0,0] = -cameraPosition[0,0]
+    #cameraPosition[1,0] = -cameraPosition[1,0]
+    cameraPosition = cameraPosition.T * rotM
+    #print rotM
+    #print cameraPosition
+    modelview = combine_rotation_translation(rotM.T, cameraPosition)
+    print modelview
+    print json.dumps([item for sublist in modelview.tolist() for item in sublist])
+    return modelview
+
+def combine_rotation_translation(rotation, translation):
+    matrix = np.zeros((4, 4))
+    matrix[0:3, 0:3] = rotation
+    matrix[0:3, 3] = translation.reshape(1, -1, 3)
+    matrix[3, 3] = 1
+    return matrix
+
+#rotation = np.zeros((3, 3))
+#rotation[0, 0] = 1
+#rotation[0, 1] = 2
+#rotation[0, 2] = 3
+#rotation[1, 0] = 4
+#rotation[1, 1] = 5
+#rotation[1, 2] = 6
+#rotation[2, 0] = 7
+#rotation[2, 1] = 8
+#rotation[2, 2] = 9
+#translation = np.zeros((3, 1))
+#translation[0] = 10
+#translation[1] = 11
+#translation[2] = 12
+#combine_rotation_translation(rotation, translation)
+
+def matrix_to_opengl(matrix):
+    conversion = np.zeros((4, 4))
+    conversion[0, 0] = 1
+    conversion[1, 1] = -1
+    conversion[2, 2] = -1
+    conversion[3, 3] = 1
+    return matrix * conversion
 
 def get_id_url(conn, last_id):
     cur = conn.cursor()
@@ -57,10 +119,40 @@ def compute_homography(kp1, desc1, kp2, desc2):
         return h
     return None
 
+
+
+
 conn = db.connect()
 detector, matcher = init_opencv()
+
+
+img1 = cv2.imread("static/img/neg-x.jpg", 1)
+kp1, desc1 = detector.detectAndCompute(img1, None)
+
+img2 = cv2.imread("photos/1", 1)
+img2 = cv2.imread("neg-x-scaled.jpg", 1)
+img2 = cv2.imread("neg-x-cropped.jpg", 1)
+img2 = cv2.imread("neg-x-rotated.jpg", 1)
+img2 = cv2.imread("neg-x-perspective.jpg", 1)
+#img2 = img1
+kp2, desc2 = detector.detectAndCompute(img2, None)
+
+h = compute_homography(kp2, desc2, kp1, desc1)
+#h = compute_homography(kp1, desc1, kp2, desc2)
+height1, width1, channels = img1.shape
+height2, width2, channels = img2.shape
+modelview(width1, height1, width2, height2, math.radians(90), math.radians(90), h)
+#modelview(width1, height1, width2, height2, math.radians(45), math.radians(45), h)
+#modelview(width1, height1, width2, height2, math.radians(53), math.radians(40), h)
+
+
+
+exit(1)
+
+
 base_img = cv2.imread("base.jpg", 1)
 base_kp, base_desc = detector.detectAndCompute(base_img, None)
+
 id = 0
 while True:
     id, url = get_id_url(conn, id)

@@ -10,9 +10,10 @@
 <body>
 <script src="js/three.min.js"></script>
 <script src="js/PointerLockControls.js"></script>
+<script src="js/tween.min.js"></script>
 <script>
   var scene = new THREE.Scene();
-  var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+  var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.001, 100000);
   
   var renderer = new THREE.WebGLRenderer();
   renderer.setPixelRatio(window.devicePixelRatio);
@@ -27,12 +28,12 @@
   var geometry = new THREE.BoxGeometry(1, 1, 1);
 
   textureCube = THREE.ImageUtils.loadTextureCube([
-    'img/pos-x.jpg',
-    'img/neg-x.jpg',
+    'img/neg-z.jpg',
+    'img/pos-z.jpg',
     'img/pos-y.jpg',
     'img/neg-y.jpg',
-    'img/pos-z.jpg',
-    'img/neg-z.jpg'
+    'img/pos-x.jpg',
+    'img/neg-x.jpg'
   ]);
   textureCube.format = THREE.RGBFormat;
 
@@ -61,35 +62,77 @@
   }, false);
 
   function animate() {
+    TWEEN.update();
     render();
     requestAnimationFrame(animate);
   }
 
   var textureLoader = new THREE.TextureLoader();
 
-  var source = new EventSource("/events");
+  //var source = new EventSource("/events");
+  var source = {};
   source.onmessage = function(event) {
     var messages = JSON.parse(event.data);
     console.log("Got messages", messages);
     for (var ii = 0; ii < messages.length; ii++) {
-      var message = messages[ii];
+      (function(message, delay) {
+        window.setTimeout(function() {
+          var planeHolder = new THREE.Object3D();
+          planeHolder.matrixAutoUpdate = false;
+          planeHolder.matrix.set.apply(planeHolder.matrix, message.json);
+          scene.add(planeHolder);
 
-      textureLoader.load("/photos/" + message.id, function(texture) {
-        texture.minFilter = THREE.LinearFilter;
-        var geometry = new THREE.PlaneBufferGeometry(0.25, 0.25);
-        geometry.uvsNeedUpdate = true;
-        var material = new THREE.MeshBasicMaterial({map: texture, side: THREE.DoubleSide});
-        var plane = new THREE.Mesh(geometry, material);
-        plane.position.x = message.json[0][0];
-        plane.position.y = message.json[1][0];
-        plane.position.z = message.json[2][0];
-        scene.add(plane);
-      });
+          textureLoader.load(message.url, function(texture) {
+            texture.minFilter = THREE.LinearFilter;
+            var geometry = new THREE.PlaneBufferGeometry(2, 2 * texture.image.height / texture.image.width);
+            var material = new THREE.MeshBasicMaterial({map: texture, side: THREE.DoubleSide, transparent: true});
+            var plane = new THREE.Mesh(geometry, material);
+            planeHolder.add(plane);
+  
+            // Animate
+            new TWEEN.Tween({scale: 0, z: 2}).to({scale: 1, z: 0}, 2000)
+            .easing(TWEEN.Easing.Elastic.Out)
+            .onUpdate(function() {
+              plane.scale.x = this.scale;
+              plane.scale.y = this.scale;
+              plane.scale.z = this.scale;
+              plane.position.z = this.z;
+            }).chain(new TWEEN.Tween({alpha: 1}).to({alpha: 0}, 1000)
+              .easing(TWEEN.Easing.Linear.None)
+              .onUpdate(function() {
+                material.opacity = this.alpha;
+              }).onComplete(function() {
+                scene.remove(planeHolder);
+              }))
+            .start();
+          });
+        }, delay);
+      })(messages[ii], ii * 3000 - 1000 + Math.random() * 2000);
     }
   };
-  //window.setInterval(function() {
-  //  source.onmessage({data: JSON.stringify({url: "img/pos-x.png", json: [[Math.random() * 2 - 1], [Math.random() * 2 - 1], [-Math.random() - 2]]})});
-  //}, 1000);
+  window.setTimeout(function() {
+    source.onmessage({data: JSON.stringify(
+      [
+{url: "/photos/1", id: 1, json: 
+[0.9885223270744129, -0.01946773290194085, -0.14981527375753828, 1.4508018267358525, 0.004728772500846931, 0.9951638737628832, -0.09811474439597516, 0.2003119804405048, 0.15100081981904168, 0.09628017310386909, 0.9838337667924731, -2.564160370028849, 0.0, 0.0, 0.0, 1.0]
+},
+{url: "/static/img/neg-x.jpg", id: 2, json: 
+[1.0, -2.4350842353448633e-16, -3.1888783969374273e-16, 8.429814400254839e-17, 2.4350842353448633e-16, 1.0, 1.6734708828771265e-16, -7.154583992017251e-16, 3.1888783969374273e-16, -1.6734708828771265e-16, 1.0, -1.0000000000000007, 0.0, 0.0, 0.0, 1.0]
+},
+{url: "/neg-x-scaled.jpg", id: 3, json: 
+[0.9999994914197973, -0.0010084536250177824, -1.3469706654836195e-05, 0.0007904419275031179, 0.0010083646015229101, 0.9999844568359672, -0.005483546963980097, 0.009959284182162353, 1.8999400106744125e-05, 0.005483530592781287, 0.9999849651526072, -1.0004886539495204, 0.0, 0.0, 0.0, 1.0]
+},
+{url: "/neg-x-cropped.jpg", id: 4, json: 
+[0.9999958836807168, 0.0007735656654897864, 0.0027630088279965406, 0.999283909979585, -0.000766608494301894, 0.9999965356316899, -0.0025181413849895175, 0.009921897244634163, -0.0027649472036325863, 0.0025160128734782114, 0.9999930123486772, -2.000595511391093, 0.0, 0.0, 0.0, 1.0]
+},
+{url: "/neg-x-rotated.jpg", id: 5, json: 
+[0.7074851796386062, -0.7067220889684478, 0.00293420445818381, 0.7062050030800456, 0.7067258765239068, 0.7074873765009202, -0.0003841137339852677, 0.006900056023298158, -0.0018044509537542288, 0.0023454329917005317, 0.9999956214408326, -2.0009548279057756, 0.0, 0.0, 0.0, 1.0]
+},
+{url: "/neg-x-perspective.jpg", id: 6, json: 
+[0.9070932384848444, 0.024078685380326686, 0.4202404949614358, 0.5178572882063885, -0.05938695766557839, 0.9956971379133496, 0.07113648016588188, -0.27810302290745315, -0.4167193851434129, -0.0894842246517192, 0.9046201012492352, -1.0974652178601416, 0.0, 0.0, 0.0, 1.0]
+},
+      ])});
+  }, 1000);
 
   animate();
 </script>
